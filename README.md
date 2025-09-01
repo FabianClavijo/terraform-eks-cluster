@@ -1,7 +1,3 @@
-Got it ✅ I’ll keep your whole structure and wording intact, only translating to **English** with minimal meaning changes.
-
----
-
 # Terraform Demo: AKS + VNet + NSG
 
 This project deploys with **Terraform** an **Azure Kubernetes Service (AKS)** cluster inside a **Virtual Network (VNet)** protected with a **Network Security Group (NSG)**.
@@ -301,4 +297,3 @@ Then run terraform apply command:
 
 ![clusterPods](assets/AKS-GUI-pods.png)
 \- Pods visualized on Azure GUI.
----
