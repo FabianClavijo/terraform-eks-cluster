@@ -1,0 +1,34 @@
+# ────── Terraform ──────
+.terraform/
+.terraform.lock.hcl # ⚠️ opcional ignorar, se recomienda commitearlo para reproducibilidad
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+*.plan
+
+# Variables con datos sensibles
+*.tfvars
+*.tfvars.json
+
+# ────── Archivos locales / sistema ──────
+*.log
+*.tmp
+*.bak
+*.swp
+.DS_Store
+Thumbs.db
+
+# ────── IDE/Editor ──────
+.vscode/
+.idea/
+*.code-workspace
+
+# ────── Python (si usas scripts auxiliares) ──────
+venv/
+__pycache__/
+*.pyc

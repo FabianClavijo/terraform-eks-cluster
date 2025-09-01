@@ -1,0 +1,23 @@
+resource_group_name = "rg-aks-demo"
+name_prefix         = "tfaks"
+location            = "eastus2"
+availability_zones = ["1", "2"]
+
+vnet_cidr       = "10.240.0.0/16"
+aks_subnet_cidr = "10.240.1.0/24"
+
+node_count   = 1
+node_vm_size = "Standard_B4ms"
+
+service_cidr       = "10.2.0.0/16"
+dns_service_ip     = "10.2.0.10"
+docker_bridge_cidr = "172.17.0.1/16"
+
+oidc_issuer_enabled       = true
+workload_identity_enabled = true
+
+tags = {
+  project = "terraform-aks-demo"
+  owner   = "fabian.clavijo"
+  env     = "demo"
+}
