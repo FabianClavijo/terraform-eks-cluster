@@ -43,7 +43,7 @@ variable "node_vm_size" {
 variable "availability_zones" {
   description = "Zonas de disponibilidad para el node pool (opcional)"
   type        = list(string)
-  default     = ["1", "2", "3"]
+  default     = ["1", "2"]
 }
 
 # Red de servicios de Kubernetes (no debe solaparse con la VNet)

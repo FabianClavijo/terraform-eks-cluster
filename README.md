@@ -1,211 +1,149 @@
-# Terraform Demo: AKS + VNet + NSG
+# Terraform · AKS + VNet + NSG (with Azure Storage backend)
 
-This project deploys with **Terraform** an **Azure Kubernetes Service (AKS)** cluster inside a **Virtual Network (VNet)** protected with a **Network Security Group (NSG)**.
-
----
-
-## 📂 File structure
-
-```
-terraform-aks-demo/
-├─ versions.tf               # Terraform and provider versions
-├─ main.tf                   # Resources: RG, VNet, Subnet, NSG, AKS
-├─ variables.tf              # Parameterized variables
-├─ outputs.tf                # Deployment outputs
-├─ terraform.tfvars.example  # Example of input variables
-├─ backend.tf                # (optional) Remote state in Azure Storage
-└─ .gitignore                # Ignore tfstate, .terraform/, etc.
-```
-
----
-
-## 🚀 Deployed resources
+This project deploys, using **Terraform**:
 
 * **Resource Group**
-* **Virtual Network (VNet)** with **dedicated subnet** for AKS
-* **Network Security Group (NSG)** with standard rules:
+* **Virtual Network (VNet)** with a dedicated **Subnet** for AKS
+* **Network Security Group (NSG)** attached to the subnet
+* **Azure Kubernetes Service (AKS)** with RBAC enabled, Azure CNI networking, and a VMSS-based system node pool
 
-  * Allow VNet inbound/outbound
-  * Allow Azure Load Balancer inbound
-  * Deny everything else
-* **AKS Cluster** with:
-
-  * `default_node_pool` of type VMSS
-  * Networking based on Azure CNI (`network_plugin = "azure"`)
-  * RBAC enabled
-  * Optional: OIDC issuer and Workload Identity
+The project also configures a **remote backend** in **Azure Storage (Blob)** to store the **Terraform state**.
 
 ---
 
-## ⚠️ Common errors found and solutions
-
-### 1. **Unregistered Resource Providers**
+## 📂 Project structure
 
 ```
-Error: Encountered an error whilst ensuring Resource Providers are registered.
-waiting for Subscription Provider ... Microsoft.DBforMySQL ...
+.
+├─ backend.tf                  # Remote backend config in Azure Storage (use_azuread_auth = true)
+├─ main.tf                     # RG, VNet, Subnet, NSG, and AKS cluster
+├─ variables.tf                # Deployment variables
+├─ outputs.tf                  # Outputs (RG, AKS, VNet/Subnet/NSG IDs)
+├─ terraform.tfvars.example    # Example variable values (copy/rename to terraform.tfvars)
+│
+├─ main-sub.bicep              # Bicep (subscription scope): creates RG and deploys storage module
+└─ stg-rg-scope.bicep          # Bicep (RG scope): creates Storage Account + Blob container "tfstate"
 ```
 
-✅ **Solution**: Manually register the providers used by AKS:
+> **Note:** In `backend.tf` the backend uses **Azure AD authentication** (`use_azuread_auth = true`) to access the Storage Account. No access keys are used.
+
+---
+
+## ✅ Prerequisites
+
+* **Azure CLI** (logged in with the right subscription)
+* **Bicep CLI** (included with Azure CLI, run `az bicep upgrade` if needed)
+* **Terraform** ≥ 1.6
+* Permissions to:
+
+  * Create **Resource Groups**, **Storage Accounts**, and **AKS clusters**
+  * Assign **RBAC roles** on the Storage Account (Blob Data Contributor role)
+
+---
+
+## 🪣 Create the Storage Account backend (with Bicep)
+
+We’ll use the included Bicep files to create the **Resource Group**, **Storage Account**, and the **Blob container** (`tfstate`) to hold the Terraform state.
+
+### 1) Parameters (example)
+
+* **Subscription**: target subscription for the backend
+* **Backend RG**: `rg-tfstates` (or your choice)
+* **Region**: e.g., `eastus2`
+* **Storage Account name**: leave empty to auto-generate, or provide a valid one (3–24 chars, lowercase, globally unique)
+
+### 2) Deploy the Bicep template (subscription scope)
 
 ```powershell
-$providers = @("Microsoft.Network","Microsoft.Compute","Microsoft.ContainerService","Microsoft.DBforMySQL")
-foreach ($p in $providers) { az provider register -n $p }
-```
-
----
-
-### 2. **Quota exceeded (0 vCPU allowed)**
-
-```
-SubscriptionIsOverQuotaForSku: Quota exceeded for : 0 VMs allowed, 1 VMs requested.
-```
-
-✅ **Solution**:
-
-* Change region in `terraform.tfvars` (`location = "eastus2"` → another region with available vCPUs).
-* Or request a quota increase from the Azure Portal.
-
----
-
-### 3. **Availability Zone error**
-
-```
-AvailabilityZoneNotSupported: The zone(s) '3' ... Supported zones for location 'eastus2' are '2,1'
-```
-
-✅ **Quick fix applied**: adjust `terraform.tfvars`:
-
-```hcl
-availability_zones = ["1", "2"]
-```
-
----
-
-## 🪣 Backend configuration in Azure Storage
-
-The Terraform state is stored in Azure Storage for team collaboration.
-
-### 1. Create Storage Account
-
-```powershell
-$RG_STATE="rg-tfstates"
-$LOC="eastus2"
-$STG="sttfdemoxxxxx"   # globally unique name
-$CONTAINER="tfstate"
-
-az group create -n $RG_STATE -l $LOC
-az storage account create -g $RG_STATE -n $STG -l $LOC --sku Standard_LRS
-az storage container create --name $CONTAINER --account-name $STG
-```
-
-### 2. backend.tf
-
-```hcl
-terraform {
-  backend "azurerm" {
-    resource_group_name  = "rg-tfstates"
-    storage_account_name = "sttfdemoxxxxx"
-    container_name       = "tfstate"
-    key                  = "aks-demo/terraform.tfstate"
-  }
-}
-```
-
-### 3. Export access key in PowerShell
-
-```powershell
-$env:ARM_ACCESS_KEY = (az storage account keys list `
-  -g rg-tfstates `
-  -n sttfdemoxxxxx `
-  --query "[0].value" -o tsv)
-```
-
-This environment variable export is used **only when you have a remote backend in Azure Storage** defined in your `backend.tf`:
-
-```hcl
-terraform {
-  backend "azurerm" {
-    resource_group_name  = "rg-tfstates"
-    storage_account_name = "sttfdemoxxxxx"
-    container_name       = "tfstate"
-    key                  = "aks-demo/terraform.tfstate"
-  }
-}
-```
-
----
-
-### 🔹 Why is it needed?
-
-The `azurerm` backend requires credentials to read/write the **Terraform state** in the Storage Account.
-Terraform automatically recognizes the environment variable `ARM_ACCESS_KEY` as the **storage access key**.
-
----
-
-### 🔹 When is it used in the flow?
-
-In the **`terraform init`** step:
-
-```powershell
-terraform init
-```
-
-When Terraform initializes the backend, it uses `$env:ARM_ACCESS_KEY` to authenticate to the Storage Account `sttfdemoxxxxx`.
-If you don’t set this variable (or don’t have Managed Identity auth), `terraform init` will fail with a credentials error.
-
----
-
-👉 In short: **this export only applies if you’re using `backend.tf` with remote state in Azure Storage**.
-It’s not used for deploying resources (AKS, VNet, NSG), but for **Terraform state management**.
-
----
-
-## 🛠️ Step-by-step to deploy the cluster
-
-### 1. Authenticate to Azure
-
-```powershell
-az login
+# Select subscription
 az account set --subscription "<SUBSCRIPTION_ID>"
+
+# Deploy main-sub.bicep at subscription scope
+az deployment sub create `
+  --name tf-backend-deploy `
+  --location <REGION> `
+  --template-file .\main-sub.bicep `
+  --parameters rgName="<BACKEND_RG>" location="<REGION>" stgName="" containerName="tfstate"
 ```
 
-### 2. Initialize Terraform
+* If `stgName=""`, the storage module will **auto-generate** a valid name.
+* Outputs will include the resource group, storage account, and container.
+
+## 🔑 Assign RBAC role to your identity
+
+Grant your user identity the **Storage Blob Data Contributor** role on the Storage Account so Terraform can store state using Azure AD authentication:
+
+```powershell
+# Storage Account ID (scope for the role)
+$scope = (az storage account show -g $rgName -n $stgName --query id -o tsv)
+
+# Your current user object ID
+$me = az ad signed-in-user show --query id -o tsv
+
+# Assign Blob Data Contributor role
+az role assignment create --assignee $me --role "Storage Blob Data Contributor" --scope $scope
+
+---
+
+## 🚀 Deploy the AKS cluster (Terraform)
+
+### 1) Initialize Terraform
 
 ```powershell
 cd terraform-aks-demo
-terraform init
+terraform init -reconfigure
 ```
 
-### 3. Review the plan
+Terraform will configure the backend to use the Storage Account created earlier.
+
+### 2) Review the plan
 
 ```powershell
 terraform plan -var-file="terraform.tfvars.example"
 ```
 
-### 4. Apply changes
+### 3) Apply the configuration
 
 ```powershell
 terraform apply -var-file="terraform.tfvars.example" -auto-approve
 ```
 
-### 5. Get AKS credentials
+### 4) Connect to the AKS cluster
 
 ```powershell
+# Capture outputs
 $rg  = terraform output -raw resource_group_name
 $aks = terraform output -raw aks_name
 
+# Get AKS credentials for kubectl
 az aks get-credentials --resource-group $rg --name $aks
-```
 
-### 6. Validate the cluster
-
-```powershell
+# Validate
 kubectl get nodes -o wide
 kubectl get pods -n kube-system -o wide
 ```
 
 ---
+
+## 📊 Outputs
+
+After deployment, Terraform provides:
+
+* Resource Group name
+* AKS cluster name
+* Node resource group
+* IDs of the VNet, Subnet, and NSG
+
+---
+
+## 🔮 Next steps for automation
+
+* Add **CI/CD pipelines** (e.g., Azure DevOps or GitHub Actions) to automatically run `terraform plan`/`apply`.
+* Configure **Terraform Cloud/Enterprise** or **remote backends** for team collaboration and state locking.
+* Add **monitoring integration** (Azure Monitor, Container Insights).
+* Create **additional node pools** (GPU, spot instances, etc.).
+* Add **Azure Container Registry (ACR)** and grant AKS pull permissions.
+* Expand Bicep modules for **multi-environment deployments** (dev, test, prod).
 
 ## 🔍 Resources visible in a clean cluster
 
