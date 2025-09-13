@@ -1,23 +1,20 @@
 cluster_name = "eks-demo"
 name_prefix  = "tfeks"
-region       = "us-east-1"
-availability_zones = ["1", "2"]
+aws_region   = "us-east-1"
 
-vpc_cidr        = "10.240.0.0/16"
+vnet_cidr       = "10.240.0.0/16"
 eks_subnet_cidr = "10.240.1.0/24"
+eks_subnet_cidr2 = "10.240.2.0/24"
 
-node_count    = 1
-instance_type = "t3.medium"
+desired_node_count = 1
+node_instance_type = "t3.medium"
 
-service_cidr       = "10.2.0.0/16"
-dns_service_ip     = "10.2.0.10"
-docker_bridge_cidr = "172.17.0.1/16"
+service_ipv4_cidr = "10.100.0.0/16"
 
-oidc_issuer_enabled       = true
-workload_identity_enabled = true
+# security_group_ids = []
 
 tags = {
-  project = "terraform-aks-demo"
+  project = "terraform-eks-demo"
   owner   = "fabian.clavijo"
   env     = "demo"
 }
