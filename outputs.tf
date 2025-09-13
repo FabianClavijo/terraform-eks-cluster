@@ -7,7 +7,7 @@ output "subnet_id" {
 }
 
 output "security_group_id" {
-  value = aws_security_group.aks.id
+  value = aws_security_group.eks.id
 }
 
 output "cluster_name" {
@@ -22,13 +22,14 @@ output "node_group_name" {
   value = aws_eks_node_group.node_group.node_group_name
 }
 output "cluster_role_arn" {
-  value = aws_iam_role.cluster.arn
+  value = aws_iam_role.eks_cluster.arn
 }
 
 output "subnet_ids" {
-  value = aws_subnet.eks[*].id
+  value = var.subnet_ids
 }
 
-output "security_group_ids" {
-  value = aws_security_group.eks[*].id
+variable "security_group_ids" {
+  description = "List of security group IDs"
+  type        = list(string)
 }
