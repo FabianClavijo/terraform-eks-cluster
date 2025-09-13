@@ -32,7 +32,8 @@ resource "aws_eks_cluster" "eks" {
   role_arn = aws_iam_role.eks_cluster.arn
 
   vpc_config {
-    subnet_ids = [aws_subnet.aks.id]
+    subnet_ids         = [aws_subnet.aks.id]
+    security_group_ids = coalescelist(var.security_group_ids, [aws_security_group.eks.id])
   }
 
   kubernetes_network_config {

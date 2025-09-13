@@ -35,6 +35,12 @@ variable "subnet_ids" {
   default     = []
 }
 
+variable "security_group_ids" {
+  description = "IDs de los security groups"
+  type        = list(string)
+  default     = []
+}
+
 variable "desired_node_count" {
   description = "Número de nodos en el node group"
   type        = number
