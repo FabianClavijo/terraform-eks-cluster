@@ -6,6 +6,10 @@ output "subnet_id" {
   value = aws_subnet.aks.id
 }
 
+output "subnet_id_2" {
+  value = aws_subnet.aks2.id
+}
+
 output "security_group_id" {
   value = aws_security_group.eks.id
 }
@@ -26,5 +30,5 @@ output "cluster_role_arn" {
 }
 
 output "subnet_ids" {
-  value = var.subnet_ids
+  value = [aws_subnet.aks.id, aws_subnet.aks2.id]
 }

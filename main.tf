@@ -32,7 +32,7 @@ resource "aws_eks_cluster" "eks" {
   role_arn = aws_iam_role.eks_cluster.arn
 
   vpc_config {
-    subnet_ids         = [aws_subnet.aks.id]
+    subnet_ids         = [aws_subnet.aks.id, aws_subnet.aks2.id]
     security_group_ids = coalescelist(var.security_group_ids, [aws_security_group.eks.id])
   }
 
@@ -81,7 +81,7 @@ resource "aws_eks_node_group" "node_group" {
   cluster_name    = aws_eks_cluster.eks.name
   node_group_name = "${var.cluster_name}-nodes"
   node_role_arn   = aws_iam_role.eks_node.arn
-  subnet_ids      = [aws_subnet.aks.id]
+  subnet_ids      = [aws_subnet.aks.id, aws_subnet.aks2.id]
 
   scaling_config {
     desired_size = var.desired_node_count
@@ -107,10 +107,19 @@ resource "aws_vpc" "main" {
 # Subnet
 ############################
 resource "aws_subnet" "aks" {
-  vpc_id     = aws_vpc.main.id
-  cidr_block = var.eks_subnet_cidr
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.eks_subnet_cidr
+  availability_zone = "${var.aws_region}a"
 
-  tags = merge(var.tags, { Name = "${var.name_prefix}-subnet" })
+  tags = merge(var.tags, { Name = "${var.name_prefix}-subnet-a" })
+}
+
+resource "aws_subnet" "aks2" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.eks_subnet_cidr2
+  availability_zone = "${var.aws_region}b"
+
+  tags = merge(var.tags, { Name = "${var.name_prefix}-subnet-b" })
 }
 
 ############################

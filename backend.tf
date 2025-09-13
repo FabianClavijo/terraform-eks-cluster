@@ -7,9 +7,9 @@
 #                 [-backend-config="dynamodb_table=<TABLA_DYNAMODB>"]
 terraform {
   backend "s3" {
-    bucket = "tfstate-demo-yourunique123"
-    key    = "eks-demo/terraform.tfstate"
-    region = "us-east-1"
+    bucket         = "tfstate-demo-yourunique123"
+    key            = "eks-demo/terraform.tfstate"
+    region         = "us-east-1"
     dynamodb_table = "tfstate-locks"
     encrypt        = true
   }
