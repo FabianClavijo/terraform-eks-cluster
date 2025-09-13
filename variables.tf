@@ -15,6 +15,12 @@ variable "eks_subnet_cidr" {
   default     = "10.240.1.0/24"
 }
 
+variable "eks_subnet_cidr2" {
+  description = "CIDR de la segunda subnet"
+  type        = string
+  default     = "10.240.2.0/24"
+}
+
 variable "tags" {
   description = "Tags comunes"
   type        = map(string)
@@ -29,11 +35,6 @@ variable "region" {
   default     = "us-east-1"
 }
 
-variable "subnet_ids" {
-  description = "IDs de las subnets donde desplegar el clúster"
-  type        = list(string)
-  default     = []
-}
 
 variable "security_group_ids" {
   description = "IDs de los security groups"
