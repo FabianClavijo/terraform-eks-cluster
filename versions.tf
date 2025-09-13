@@ -1,13 +1,13 @@
 terraform {
   required_version = ">= 1.6"
   required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 3.112" # ajusta si usas otra versión
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
     }
   }
 }
 
-provider "azurerm" {
-  features {}
+provider "aws" {
+  region = var.aws_region
 }

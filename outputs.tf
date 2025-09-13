@@ -1,23 +1,34 @@
-output "resource_group_name" {
-  value = azurerm_resource_group.rg.name
-}
-
-output "aks_name" {
-  value = azurerm_kubernetes_cluster.aks.name
-}
-
-output "aks_node_resource_group" {
-  value = azurerm_kubernetes_cluster.aks.node_resource_group
-}
-
-output "vnet_id" {
-  value = azurerm_virtual_network.vnet.id
+output "vpc_id" {
+  value = aws_vpc.main.id
 }
 
 output "subnet_id" {
-  value = azurerm_subnet.aks.id
+  value = aws_subnet.aks.id
 }
 
-output "nsg_id" {
-  value = azurerm_network_security_group.aks.id
+output "security_group_id" {
+  value = aws_security_group.aks.id
+}
+
+output "cluster_name" {
+  value = aws_eks_cluster.eks.name
+}
+
+output "cluster_endpoint" {
+  value = aws_eks_cluster.eks.endpoint
+}
+
+output "node_group_name" {
+  value = aws_eks_node_group.node_group.node_group_name
+}
+output "cluster_role_arn" {
+  value = aws_iam_role.cluster.arn
+}
+
+output "subnet_ids" {
+  value = aws_subnet.eks[*].id
+}
+
+output "security_group_ids" {
+  value = aws_security_group.eks[*].id
 }

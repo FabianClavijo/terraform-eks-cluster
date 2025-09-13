@@ -1,153 +1,154 @@
 ############################
-# Resource Group
+# IAM Roles for EKS
 ############################
-resource "azurerm_resource_group" "rg" {
-  name     = var.resource_group_name
-  location = var.location
-  tags     = var.tags
+
+resource "aws_iam_role" "eks_cluster" {
+  name = "${var.cluster_name}-cluster-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "eks.amazonaws.com"
+      }
+    }]
+  })
 }
 
-############################
-# VNet + Subnet para AKS
-############################
-resource "azurerm_virtual_network" "vnet" {
-  name                = "${var.name_prefix}-vnet"
-  address_space       = [var.vnet_cidr]
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  tags                = var.tags
+resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+  role       = aws_iam_role.eks_cluster.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
-resource "azurerm_subnet" "aks" {
-  name                 = "${var.name_prefix}-aks-subnet"
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = [var.aks_subnet_cidr]
+resource "aws_iam_role_policy_attachment" "eks_cluster_service_policy" {
+  role       = aws_iam_role.eks_cluster.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
 }
 
-############################
-# NSG + asociación a Subnet AKS
-############################
-resource "azurerm_network_security_group" "aks" {
-  name                = "${var.name_prefix}-aks-nsg"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  tags                = var.tags
+resource "aws_eks_cluster" "eks" {
+  name     = var.cluster_name
+  role_arn = aws_iam_role.eks_cluster.arn
 
-  security_rule {
-    name                       = "Allow_VNet_Inbound"
-    priority                   = 100
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "*"
-    source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_address_prefix = "VirtualNetwork"
+  vpc_config {
+    subnet_ids = var.subnet_ids
   }
 
-  security_rule {
-    name                       = "Allow_AzureLoadBalancer_Inbound"
-    priority                   = 110
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "*"
-    source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "AzureLoadBalancer"
-    destination_address_prefix = "*"
+  kubernetes_network_config {
+    service_ipv4_cidr = var.service_ipv4_cidr
   }
-
-  security_rule {
-    name                       = "Deny_All_Inbound"
-    priority                   = 4096
-    direction                  = "Inbound"
-    access                     = "Deny"
-    protocol                   = "*"
-    source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
-  security_rule {
-    name                       = "Allow_VNet_Outbound"
-    priority                   = 100
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "*"
-    source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_address_prefix = "VirtualNetwork"
-  }
-
-  security_rule {
-    name                       = "Allow_Internet_Outbound"
-    priority                   = 110
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "*"
-    source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_address_prefix = "Internet"
-  }
-
-  security_rule {
-    name                       = "Deny_All_Outbound"
-    priority                   = 4096
-    direction                  = "Outbound"
-    access                     = "Deny"
-    protocol                   = "*"
-    source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-}
-
-resource "azurerm_subnet_network_security_group_association" "aks" {
-  subnet_id                 = azurerm_subnet.aks.id
-  network_security_group_id = azurerm_network_security_group.aks.id
-}
-
-############################
-# AKS
-############################
-resource "azurerm_kubernetes_cluster" "aks" {
-  name                = "${var.name_prefix}-aks"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  dns_prefix          = "${var.name_prefix}-dns"
-
-  node_resource_group = "${var.name_prefix}-node-rg"
-
-  identity {
-    type = "SystemAssigned"
-  }
-
-  default_node_pool {
-    name           = "system"
-    node_count     = var.node_count
-    vm_size        = var.node_vm_size
-    vnet_subnet_id = azurerm_subnet.aks.id
-    type           = "VirtualMachineScaleSets"
-    zones          = var.availability_zones
-  }
-
-  network_profile {
-    network_plugin     = "azure"
-    network_policy     = "azure"
-    load_balancer_sku  = "standard"
-    service_cidr       = var.service_cidr
-    dns_service_ip     = var.dns_service_ip
-    outbound_type      = "loadBalancer"
-  }
-
-  role_based_access_control_enabled = true
-  oidc_issuer_enabled               = var.oidc_issuer_enabled
-  workload_identity_enabled         = var.workload_identity_enabled
 
   tags = var.tags
+}
+
+############################
+# Node Group
+############################
+
+resource "aws_iam_role" "eks_node" {
+  name = "${var.cluster_name}-node-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eks_node_worker" {
+  role       = aws_iam_role.eks_node.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "eks_node_cni" {
+  role       = aws_iam_role.eks_node.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+
+resource "aws_iam_role_policy_attachment" "eks_node_registry" {
+  role       = aws_iam_role.eks_node.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
+resource "aws_eks_node_group" "node_group" {
+  cluster_name    = aws_eks_cluster.eks.name
+  node_group_name = "${var.cluster_name}-nodes"
+  node_role_arn   = aws_iam_role.eks_node.arn
+  subnet_ids      = var.subnet_ids
+
+  scaling_config {
+    desired_size = var.desired_node_count
+    max_size     = var.desired_node_count
+    min_size     = var.desired_node_count
+  }
+
+  instance_types = [var.node_instance_type]
+
+  tags = var.tags
+}
+
+############################
+# VPC
+############################
+resource "aws_vpc" "main" {
+  cidr_block = var.vnet_cidr
+
+  tags = merge(var.tags, { Name = "${var.name_prefix}-vpc" })
+}
+
+############################
+# Subnet
+############################
+resource "aws_subnet" "aks" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = var.eks_subnet_cidr
+
+  tags = merge(var.tags, { Name = "${var.name_prefix}-subnet" })
+}
+
+############################
+# Security Group
+############################
+resource "aws_security_group" "eks" {
+  name   = "${var.name_prefix}-sg"
+  vpc_id = aws_vpc.main.id
+  tags   = var.tags
+
+  ingress {
+    description = "Allow VPC Inbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [var.vnet_cidr]
+  }
+
+  ingress {
+    description = "Allow Load Balancer Inbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "Allow VPC Outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [var.vnet_cidr]
+  }
+
+  egress {
+    description = "Allow Internet Outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }

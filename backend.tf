@@ -1,15 +1,16 @@
-# Usa Azure Storage como backend remoto para el estado de Terraform.
-# Requiere que ya exista el Storage Account y el contenedor "tfstate".
-# Puedes parametrizar estos valores vía variables de entorno al ejecutar `terraform init`:
-#   export ARM_ACCESS_KEY="<storage_account_key>"
-# O usar "azurerm" con Managed Identity/az login (recomendado).
+# Usa Amazon S3 como backend remoto para el estado de Terraform.
+# Requiere que existan el bucket y la clave (key) dentro del bucket.
+# Puedes parametrizar estos valores vía `terraform init -backend-config`:
+#   terraform init -backend-config="bucket=<MI_BUCKET>" \
+#                 -backend-config="key=aks-demo/terraform.tfstate" \
+#                 -backend-config="region=<REGION>" \
+#                 [-backend-config="dynamodb_table=<TABLA_DYNAMODB>"]
 terraform {
-  backend "azurerm" {
-    subscription_id      = "<MY_AZURE_SUBSCRIPTION_ID>"
-    resource_group_name  = "rg-tfstates"
-    storage_account_name = "sttfdemodev001"
-    container_name       = "tfstate"
-    key                  = "aks-demo/terraform.tfstate"
-    use_azuread_auth     = true
+  backend "s3" {
+    bucket = "tfstate-demo-yourunique123"
+    key    = "eks-demo/terraform.tfstate"
+    region = "us-east-1"
+    dynamodb_table = "tfstate-locks"
+    encrypt        = true
   }
 }

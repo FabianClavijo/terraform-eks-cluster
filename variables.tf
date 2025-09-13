@@ -1,31 +1,73 @@
-variable "resource_group_name" {
-  description = "Nombre del Resource Group"
+variable "aws_region" {
+  description = "Región de AWS"
   type        = string
-  default     = "rg-aks-demo"
+  default     = "us-east-1"
+}
+variable "vnet_cidr" {
+  description = "CIDR de la VPC"
+  type        = string
+  default     = "10.240.0.0/16"
+}
+
+variable "eks_subnet_cidr" {
+  description = "CIDR de la subnet"
+  type        = string
+  default     = "10.240.1.0/24"
+}
+
+variable "tags" {
+  description = "Tags comunes"
+  type        = map(string)
+  default = {
+    project = "terraform-eks-demo"
+    env     = "demo"
+  }
+}
+variable "region" {
+  description = "Región de AWS"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "subnet_ids" {
+  description = "IDs de las subnets donde desplegar el clúster"
+  type        = list(string)
+  default     = []
+}
+
+variable "desired_node_count" {
+  description = "Número de nodos en el node group"
+  type        = number
+  default     = 2
+}
+
+variable "node_instance_type" {
+  description = "Tipo de instancia para los nodos"
+  type        = string
+  default     = "t3.medium"
+}
+
+variable "service_ipv4_cidr" {
+  description = "CIDR para los servicios de Kubernetes"
+  type        = string
+  default     = "10.100.0.0/16"
+}
+variable "cluster_name" {
+  description = "Nombre del clúster EKS"
+  type        = string
+  default     = "eks-demo"
 }
 
 variable "name_prefix" {
   description = "Prefijo para nombres de recursos"
   type        = string
-  default     = "tfaks"
+  default     = "tfeks"
 }
 
-variable "location" {
-  description = "Región de Azure"
-  type        = string
-  default     = "eastus2"
-}
-
-variable "vnet_cidr" {
-  description = "CIDR de la VNet"
+variable "vpc_cidr" {
+  description = "CIDR de la VPC"
   type        = string
   default     = "10.240.0.0/16"
-}
-
-variable "aks_subnet_cidr" {
-  description = "CIDR de la subnet para AKS"
-  type        = string
-  default     = "10.240.1.0/24"
 }
 
 variable "node_count" {
@@ -34,10 +76,10 @@ variable "node_count" {
   default     = 1
 }
 
-variable "node_vm_size" {
-  description = "SKU de VM para los nodos"
+variable "instance_type" {
+  description = "Tipo de instancia para los nodos"
   type        = string
-  default     = "Standard_B4ms"
+  default     = "t3.medium"
 }
 
 variable "availability_zones" {
@@ -76,13 +118,4 @@ variable "workload_identity_enabled" {
   description = "Habilitar Workload Identity"
   type        = bool
   default     = true
-}
-
-variable "tags" {
-  description = "Tags comunes"
-  type        = map(string)
-  default     = {
-    project = "terraform-aks-demo"
-    env     = "demo"
-  }
 }
