@@ -32,7 +32,7 @@ resource "aws_eks_cluster" "eks" {
   role_arn = aws_iam_role.eks_cluster.arn
 
   vpc_config {
-    subnet_ids = var.subnet_ids
+    subnet_ids = [aws_subnet.aks.id]
   }
 
   kubernetes_network_config {
@@ -80,7 +80,7 @@ resource "aws_eks_node_group" "node_group" {
   cluster_name    = aws_eks_cluster.eks.name
   node_group_name = "${var.cluster_name}-nodes"
   node_role_arn   = aws_iam_role.eks_node.arn
-  subnet_ids      = var.subnet_ids
+  subnet_ids      = [aws_subnet.aks.id]
 
   scaling_config {
     desired_size = var.desired_node_count
