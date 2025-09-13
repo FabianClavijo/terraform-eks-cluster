@@ -111,7 +111,14 @@ resource "aws_subnet" "aks" {
   cidr_block        = var.eks_subnet_cidr
   availability_zone = "${var.aws_region}a"
 
-  tags = merge(var.tags, { Name = "${var.name_prefix}-subnet-a" })
+  tags = merge(
+    var.tags,
+    {
+      Name                                        = "${var.name_prefix}-subnet-a"
+      "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+      "kubernetes.io/role/internal-elb"           = "1"
+    }
+  )
 }
 
 resource "aws_subnet" "aks2" {
@@ -119,7 +126,14 @@ resource "aws_subnet" "aks2" {
   cidr_block        = var.eks_subnet_cidr2
   availability_zone = "${var.aws_region}b"
 
-  tags = merge(var.tags, { Name = "${var.name_prefix}-subnet-b" })
+  tags = merge(
+    var.tags,
+    {
+      Name                                        = "${var.name_prefix}-subnet-b"
+      "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+      "kubernetes.io/role/internal-elb"           = "1"
+    }
+  )
 }
 
 ############################
