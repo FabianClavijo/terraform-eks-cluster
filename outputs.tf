@@ -32,3 +32,11 @@ output "cluster_role_arn" {
 output "subnet_ids" {
   value = [aws_subnet.aks.id, aws_subnet.aks2.id]
 }
+
+output "public_subnet_id" {
+  value = aws_subnet.public.id
+}
+
+output "public_route_table_id" {
+  value = aws_route_table.public.id
+}
