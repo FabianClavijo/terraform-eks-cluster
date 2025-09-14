@@ -103,7 +103,9 @@ resource "aws_eks_node_group" "node_group" {
 # VPC
 ############################
 resource "aws_vpc" "main" {
-  cidr_block = var.vnet_cidr
+  cidr_block           = var.vnet_cidr
+  enable_dns_support   = true
+  enable_dns_hostnames = true
 
   tags = merge(var.tags, { Name = "${var.name_prefix}-vpc" })
 }
