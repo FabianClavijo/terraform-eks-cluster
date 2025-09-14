@@ -111,8 +111,33 @@ resource "aws_vpc" "main" {
 }
 
 ############################
+# Internet Gateway
+############################
+
+resource "aws_internet_gateway" "this" {
+  vpc_id = aws_vpc.main.id
+
+  tags = merge(var.tags, { Name = "${var.name_prefix}-igw" })
+}
+
+############################
 # Subnet
 ############################
+resource "aws_subnet" "public" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = var.public_subnet_cidr
+  availability_zone       = "${var.aws_region}a"
+  map_public_ip_on_launch = true
+
+  tags = merge(
+    var.tags,
+    {
+      Name                                        = "${var.name_prefix}-public-subnet-a"
+      "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+      "kubernetes.io/role/elb"                    = "1"
+    }
+  )
+}
 resource "aws_subnet" "aks" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = var.eks_subnet_cidr
@@ -141,6 +166,26 @@ resource "aws_subnet" "aks2" {
       "kubernetes.io/role/internal-elb"           = "1"
     }
   )
+}
+
+############################
+# Route Table for Public Subnet
+############################
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.this.id
+  }
+
+  tags = merge(var.tags, { Name = "${var.name_prefix}-public-rt" })
+}
+
+resource "aws_route_table_association" "public" {
+  subnet_id      = aws_subnet.public.id
+  route_table_id = aws_route_table.public.id
 }
 
 ############################

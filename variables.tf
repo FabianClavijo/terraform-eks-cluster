@@ -22,6 +22,12 @@ variable "eks_subnet_cidr2" {
   default     = "10.240.2.0/24"
 }
 
+variable "public_subnet_cidr" {
+  description = "CIDR de la subnet pública"
+  type        = string
+  default     = "10.240.0.0/24"
+}
+
 variable "tags" {
   description = "Tags comunes"
   type        = map(string)
