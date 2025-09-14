@@ -169,6 +169,23 @@ resource "aws_subnet" "aks2" {
 }
 
 ############################
+# NAT Gateway
+############################
+
+resource "aws_eip" "nat" {
+  vpc = true
+
+  tags = merge(var.tags, { Name = "${var.name_prefix}-nat-eip" })
+}
+
+resource "aws_nat_gateway" "this" {
+  subnet_id     = aws_subnet.public.id
+  allocation_id = aws_eip.nat.id
+
+  tags = merge(var.tags, { Name = "${var.name_prefix}-nat" })
+}
+
+############################
 # Route Table for Public Subnet
 ############################
 
@@ -186,6 +203,31 @@ resource "aws_route_table" "public" {
 resource "aws_route_table_association" "public" {
   subnet_id      = aws_subnet.public.id
   route_table_id = aws_route_table.public.id
+}
+
+############################
+# Route Table for Private Subnets
+############################
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.this.id
+  }
+
+  tags = merge(var.tags, { Name = "${var.name_prefix}-private-rt" })
+}
+
+resource "aws_route_table_association" "private_aks" {
+  subnet_id      = aws_subnet.aks.id
+  route_table_id = aws_route_table.private.id
+}
+
+resource "aws_route_table_association" "private_aks2" {
+  subnet_id      = aws_subnet.aks2.id
+  route_table_id = aws_route_table.private.id
 }
 
 ############################
