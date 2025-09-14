@@ -135,4 +135,4 @@ This project provisions a **basic Kubernetes infrastructure on AWS using Terrafo
 \- GUI of the VPC deployed.
 
 ![nginx](assets/webserver-nginx-up.png)
-\- GUI of the VPC deployed.
+\- One Nginx server up and exposed to internet from cluster.
