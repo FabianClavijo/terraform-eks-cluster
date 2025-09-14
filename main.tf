@@ -173,7 +173,7 @@ resource "aws_subnet" "aks2" {
 ############################
 
 resource "aws_eip" "nat" {
-  vpc = true
+  domain = "vpc"
 
   tags = merge(var.tags, { Name = "${var.name_prefix}-nat-eip" })
 }
