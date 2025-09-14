@@ -10,7 +10,6 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 *.plan
-assets/
 
 # Variables con datos sensibles
 *.tfvars

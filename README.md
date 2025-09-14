@@ -1,110 +1,138 @@
-# Terraform · EKS + VPC + Security Group (with Amazon S3 backend)
+# Terraform EKS Cluster
 
-This project uses **Terraform** to provision:
-
-* **Amazon VPC** with a configurable CIDR range
-* Two **subnets** spread across availability zones
-* A **security group** for cluster and load balancer traffic
-* An **Amazon EKS cluster**
-* A managed **node group**
-
-Terraform state is stored remotely in **Amazon S3** (optionally using **DynamoDB** for state locking).
+This project provisions a **basic Kubernetes infrastructure on AWS using Terraform**, with a remote backend for state management. It includes networking, security, IAM roles, and a fully functional Amazon EKS cluster ready to run workloads.
 
 ---
 
-## 📂 Project structure
+## AWS Components
 
-```
-.
-├─ backend.tf                  # Remote backend config in AWS S3
-├─ main.tf                     # VPC, subnets, security group, EKS cluster and node group
-├─ variables.tf                # Deployment variables
-├─ outputs.tf                  # Outputs (VPC, subnets, cluster info)
-└─ terraform.tfvars.example    # Example variable values (copy to terraform.tfvars)
-```
+### Remote Backend (S3 + DynamoDB)
 
-> **Note:** `backend.tf` is prepared for **Amazon S3**. Provide the bucket, region and optional DynamoDB table when running `terraform init`.
+* Terraform state is stored securely in an **encrypted S3 bucket**.
+* **Optional DynamoDB table** is used to implement state locking, preventing concurrent executions and ensuring safe collaboration.
 
----
+### AWS Provider & Versions
 
-## ✅ Prerequisites
+* Requires **Terraform ≥ 1.6**.
+* Uses the official **AWS provider 5.x**.
+* The region is defined via the `aws_region` variable.
 
-* **AWS CLI** configured with credentials
-* **kubectl**
-* **Terraform** ≥ 1.6
+### Networking
 
----
+* **VPC**: Isolated network with DNS support and configurable CIDR block.
+* **Internet Gateway**: Provides connectivity between the VPC and the internet.
+* **Public Subnet**: Hosts resources that require public IPs (e.g., external load balancers).
+* **Private Subnets (x2)**: Host EKS nodes and internal load balancers, distributed across availability zones.
+* **NAT Gateway + Elastic IP**: Enables outbound internet access from private subnets while blocking inbound traffic.
+* **Route Tables**:
 
-## 🪣 Create the backend in S3
+  * Public routes (`0.0.0.0/0` → Internet Gateway).
+  * Private routes (`0.0.0.0/0` → NAT Gateway).
 
-Create a bucket to store the Terraform state (replace placeholders):
+### Security
 
-```bash
-aws s3api create-bucket --bucket <MY_BUCKET> --region <REGION> --create-bucket-configuration LocationConstraint=<REGION>
-```
+* **Security Groups**: Enforce inbound/outbound rules for EKS control plane and worker nodes, allowing controlled communication between internal resources and the internet.
 
-(Optional) create a DynamoDB table for state locking:
+### IAM Roles
 
-```bash
-aws dynamodb create-table \
-  --table-name <DYNAMODB_TABLE> \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --region <REGION>
-```
+* Dedicated **IAM roles and policies** for the EKS control plane and worker nodes.
+* Permissions aligned with the principle of least privilege.
 
----
+### Amazon EKS Cluster
 
-## 🚀 Deploy the EKS cluster
+* Provisions the **EKS control plane** in private subnets, secured by security groups.
+* Defines a dedicated **CIDR range for internal services**.
+* Fully integrated with IAM for access control.
 
-### 1) Initialize Terraform
+### Managed Node Group
 
-```bash
-terraform init \
-  -backend-config="bucket=<MY_BUCKET>" \
-  -backend-config="key=eks-demo/terraform.tfstate" \
-  -backend-config="region=<REGION>" \
-  [-backend-config="dynamodb_table=<DYNAMODB_TABLE>"] \
-  -reconfigure
-```
-
-### 2) Review the plan
-
-```bash
-terraform plan -var-file="terraform.tfvars.example"
-```
-
-### 3) Apply the configuration
-
-```bash
-terraform apply -var-file="terraform.tfvars.example" -auto-approve
-```
-
-### 4) Connect to the EKS cluster
-
-```bash
-# capture outputs
-cluster_name=$(terraform output -raw cluster_name)
-aws eks update-kubeconfig --region <REGION> --name "$cluster_name"
-
-# validate
-kubectl get nodes -o wide
-```
+* **EC2-based worker nodes** automatically join the cluster.
+* Scales dynamically based on the desired configuration.
+* Nodes run in private subnets with appropriate IAM permissions.
 
 ---
 
-## 🧹 Cleanup
+## Component Interactions
 
-```bash
-terraform destroy -var-file="terraform.tfvars.example" -auto-approve
-```
+* **Networking & Access**: The VPC hosts both public and private subnets. The Internet Gateway exposes public services, while the NAT Gateway ensures secure outbound traffic from private resources.
+* **Security**: Security Groups apply fine-grained traffic restrictions, balancing internal communication with controlled internet access.
+* **Cluster Integration**: The EKS control plane resides in private subnets; managed EC2 worker nodes connect through IAM roles and security groups.
+* **Remote State**: The Terraform state is stored in S3, with DynamoDB ensuring safe, reproducible team deployments.
 
 ---
 
-## ✅ Conclusions
+## Prerequisites
 
-* The project deploys a basic **EKS** environment ready for workloads.
-* Remote state is stored in **Amazon S3** and can use **DynamoDB** for locking.
-* The infrastructure can be extended with additional node groups, networking rules and add-ons.
+* **AWS CLI** configured with valid credentials.
+* **kubectl** for cluster interaction.
+* **Terraform ≥ 1.6** installed.
 
+---
+
+## Basic Usage
+
+1. Create the **S3 bucket** (and optional DynamoDB table) for Terraform backend.
+2. Initialize the Terraform project:
+
+   ```bash
+   terraform init -backend-config=...
+   ```
+3. Plan the deployment:
+
+   ```bash
+   terraform plan -var-file="terraform.tfvars.example"
+   ```
+4. Apply the configuration:
+
+   ```bash
+   terraform apply -var-file="terraform.tfvars.example"
+   ```
+5. Update kubeconfig and validate the cluster:
+
+   ```bash
+   aws eks update-kubeconfig --name <cluster_name>
+   kubectl get nodes
+   ```
+
+   ---
+
+## Deployment Visualization
+
+![applyComplete](assets/apply-complete.png)
+\- Console print of deployed resources, aplly complete!.
+
+![clusterGUI](assets/cluster-deployments-GUI.png)
+\- GUI visualization of deployments.
+
+![ec2Insta](assets/ec2-instances-as-eks-nodes-GUI.png)
+\- GUI visualization of deployments.
+
+![instanRunn](assets/instances-running-ec2-GUI.png)
+\- GUI Instances running.
+
+![interGate](assets/internet-gateway-GUI.png)
+\- GUI of the Internet Gateway.
+
+![kubeOut](assets/kubectl-outputs-somke-test.png)
+\- Smoke test doing deployments to the cluster and launching commands.
+
+![natGate](assets/nat-gateway-GUI.png)
+\- GUI of the NAT gateway.
+
+![plan](assets/plan-resources-to-deploy.png)
+\- Terraform plan command output.
+
+![routeTables](assets/route-tablesGUI.png)
+\- Terraform plan command output.
+
+![subnets](assets/subnets-deployed-GUI.png)
+\- Subnets deployed on this project.
+
+![subnets](assets/terraform-init-s3.png)
+\- Terraform init command output.
+
+![vpc](assets/vpc-GUI.png)
+\- GUI of the VPC deployed.
+
+![nginx](assets/webserver-nginx-up.png)
+\- GUI of the VPC deployed.
